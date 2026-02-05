@@ -1,0 +1,102 @@
+================================================================================
+ANÁLISIS DETALLADO DE ARCHIVOS EXCEL
+================================================================================
+
+📋 ARCHIVO 1: validacion.xlsx
+--------------------------------------------------------------------------------
+
+📊 Total de registros: 236
+
+📝 Columnas encontradas (7):
+  1. TKT
+  2. FECHA 
+  3. TARJETA 
+  4. VALOR 
+  5. AUT 
+  6. PNR 
+  7. Unnamed: 6
+
+🔍 Primeras 5 filas de ejemplo:
+            TKT  FECHA             TARJETA      VALOR     AUT     PNR                             Unnamed: 6
+0  2.463218e+09  19/JAN  VI4099000000008221   928800.0  971736  TRSCTS             TKT 2463217694 AUT 971736
+1  2.463219e+09  19/JAN  VI4099000000008221  1845100.0  989782  IDEDRI  TKT 2463218502 2463218503 AUT 989782
+2  2.463219e+09  19/JAN  VI4099000000008221  1845100.0  989782  IDEDRI                                   NaN
+3  2.463219e+09  19/JAN  VI4099000000002078   588700.0      89  ZCQGUJ      TKT 2463218508 2463218509 AUT 89
+4  2.463219e+09  19/JAN  VI4099000000002078   588700.0      89  ZCQGUJ                                   NaN
+
+
+================================================================================
+📋 ARCHIVO 2: pagos.xlsx
+--------------------------------------------------------------------------------
+
+📊 Total de registros: 541
+
+📝 Columnas encontradas (52):
+  1. Número de pedido
+  2. Fecha
+  3. Código de aprobación
+  4. Estado
+  5. Número de tarjeta
+  6. Fecha de pago
+  7. Valor total
+  8. Titular de la tarjeta
+  9. Fecha de aprobación
+  10. Valor aprobado
+  11. Número único de pedido en el sistema
+  12. Fecha de caducidad
+  13. Código de autenticación
+  14. Medio de pago
+  15. IP
+  16. Usuario registro orden
+  17. URL del comercio
+  18. Nombre de usuario del comercio
+  19. Nombre del comercio
+  20. Descripción de la orden
+  21. Fecha de la última anulación
+  22. Fecha de reverso
+  23. Valor de la comisión
+  24. Moneda
+  25. Valor de autorización
+  26. Valor de anulación
+  27. Peso fraude
+  28. Mensaje de resultado de fraude
+  29. Con dcc
+  30. Franquicia
+  31. Producto
+  32. Nombre del banco
+  33. Código de país del banco
+  34. Codigo de país de la IP
+  35. País del banco
+  36. País de la IP
+  37. Código de acción
+  38. Código de acción descripción
+  39. Original Código de respuesta de procesamiento
+  40. Número de referencia
+  41. Número de autenticación referencia
+  42. Terminal ID
+  43. Comercio ID
+  44. 3DSec/SSL
+  45. 3DS Tipo
+  46. ECI
+  47. Cliente ID
+  48. Telefono del cliente
+  49. Email del cliente
+  50. AFT/OCT
+  51. MCC
+  52. Parámetros adicionales de pedido
+
+🔍 Primeras 5 filas de ejemplo:
+   Número de pedido                Fecha Código de aprobación    Estado Número de tarjeta        Fecha de pago  Valor total                          Titular de la tarjeta  Fecha de aprobación  Valor aprobado  Número único de pedido en el sistema  Fecha de caducidad  Código de autenticación Medio de pago              IP        Usuario registro orden             URL del comercio Nombre de usuario del comercio       Nombre del comercio Descripción de la orden Fecha de la última anulación  Fecha de reverso Valor de la comisión Moneda  Valor de autorización  Valor de anulación  Peso fraude  Mensaje de resultado de fraude  Con dcc Franquicia  Producto Nombre del banco Código de país del banco Codigo de país de la IP País del banco              País de la IP  Código de acción           Código de acción descripción  Original Código de respuesta de procesamiento  Número de referencia  Número de autenticación referencia  Terminal ID  Comercio ID        3DSec/SSL 3DS Tipo  ECI  Cliente ID  Telefono del cliente                        Email del cliente  AFT/OCT   MCC                   Parámetros adicionales de pedido
+0  2028696_38302433  2026.01.19 21:51:42               500647  Aprobado      409985**2078  2026.01.19 21:51:44        83000  NUEVA EMPRESA PROMOTORA DE SALUD S.A NUEVA EM  2026.01.19 21:51:45           83000  7954565a-1cc8-7668-9330-8f890caf602c              202612                        2       Tarjeta   172.16.13.101  EXPRESO_VIAJES_Y_TURISMO-api  https://www.credibanco.com/       EXPRESO_VIAJES_Y_TURISMO  EXPRESO VIAJES Y TURISMO                    Visa                          NaN               NaN                 0,00    COP                  83000                   0            0                             NaN  Ninguno       VISA       NaN      Bancolombia                       CO           &ltUnknown&gt       Colombia              &ltUnknown&gt                 0  La solicitud se procesó correctamente                                              0          602002846722                        602002846722         6760     11029774  SSL_transaction      SSL    7  9001562642                   NaN  recepcioncuentasmedicas@nuevaeps.com.co      NaN  4722  [travel.currency:170, binProductCategory:CREDI...
+1  2028696_38302423  2026.01.19 21:51:42               500641  Aprobado      409985**2078  2026.01.19 21:51:43      1105000  NUEVA EMPRESA PROMOTORA DE SALUD S.A NUEVA EM  2026.01.19 21:51:43         1105000  a3d011f7-d4cf-749e-a79a-a78e0caf602c              202612                        2       Tarjeta   172.16.13.101  EXPRESO_VIAJES_Y_TURISMO-api  https://www.credibanco.com/       EXPRESO_VIAJES_Y_TURISMO  EXPRESO VIAJES Y TURISMO                    Visa                          NaN               NaN                 0,00    COP                1105000                   0            0                             NaN  Ninguno       VISA       NaN      Bancolombia                       CO           &ltUnknown&gt       Colombia              &ltUnknown&gt                 0  La solicitud se procesó correctamente                                              0          602002844572                        602002844572         6760     11029774  SSL_transaction      SSL    7  9001562642                   NaN  recepcioncuentasmedicas@nuevaeps.com.co      NaN  4722  [binProductCategory:CREDIT, IVA.amount:0.00, m...
+2  2028694_38302393  2026.01.19 21:51:00               500495  Aprobado      409985**2078  2026.01.19 21:51:02        83000  NUEVA EMPRESA PROMOTORA DE SALUD S.A NUEVA EM  2026.01.19 21:51:03           83000  55ffa5a6-3e6e-73c2-85bf-61220caf602c              202612                        2       Tarjeta   172.16.13.101  EXPRESO_VIAJES_Y_TURISMO-api  https://www.credibanco.com/       EXPRESO_VIAJES_Y_TURISMO  EXPRESO VIAJES Y TURISMO                    Visa                          NaN               NaN                 0,00    COP                  83000                   0            0                             NaN  Ninguno       VISA       NaN      Bancolombia                       CO           &ltUnknown&gt       Colombia              &ltUnknown&gt                 0  La solicitud se procesó correctamente                                              0          602002795642                        602002795642         6760     11029774  SSL_transaction      SSL    7  9001562642                   NaN  recepcioncuentasmedicas@nuevaeps.com.co      NaN  4722  [travel.currency:170, binProductCategory:CREDI...
+3  2028694_38302383  2026.01.19 21:51:00               500489  Aprobado      409985**2078  2026.01.19 21:51:01      1105000  NUEVA EMPRESA PROMOTORA DE SALUD S.A NUEVA EM  2026.01.19 21:51:02         1105000  786fa90b-42cd-79cc-bb67-8d4a0caf602c              202612                        2       Tarjeta   172.16.13.101  EXPRESO_VIAJES_Y_TURISMO-api  https://www.credibanco.com/       EXPRESO_VIAJES_Y_TURISMO  EXPRESO VIAJES Y TURISMO                    Visa                          NaN               NaN                 0,00    COP                1105000                   0            0                             NaN  Ninguno       VISA       NaN      Bancolombia                       CO           &ltUnknown&gt       Colombia              &ltUnknown&gt                 0  La solicitud se procesó correctamente                                              0          602002794052                        602002794052         6760     11029774  SSL_transaction      SSL    7  9001562642                   NaN  recepcioncuentasmedicas@nuevaeps.com.co      NaN  4722  [IVA.amount:0.00, binProductCategory:CREDIT, a...
+4   225423_38302363  2026.01.19 21:47:10               499541  Aprobado      409985**8221  2026.01.19 21:47:12       249000             NUEVA EPS SA SUBSIDIA NUEVA EPS SA  2026.01.19 21:47:13          249000  dd83f51a-2302-770a-9ce8-87370caf602c              202612                        2       Tarjeta  34.232.176.163  EXPRESO_VIAJES_Y_TURISMO-api  https://www.credibanco.com/       EXPRESO_VIAJES_Y_TURISMO  EXPRESO VIAJES Y TURISMO                     NaN                          NaN               NaN                 0,00    COP                 249000                   0            0                             NaN  Ninguno       VISA       NaN      Bancolombia                       CO                      US       Colombia  Estados Unidos de América                 0  La solicitud se procesó correctamente                                              0          602002523171                        602002523171         6760     11029774  SSL_transaction      SSL    7         NaN                   NaN         monica.rodriguez@nuevaeps.com.co      NaN  4722  [travel.currency:170, IVA.amount:0.00, binProd...
+
+
+================================================================================
+📌 RESUMEN
+================================================================================
+validacion.xlsx: 236 filas × 7 columnas
+pagos.xlsx:      541 filas × 52 columnas
+================================================================================
