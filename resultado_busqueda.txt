@@ -1,6 +1,0 @@
-﻿Leyendo Excel de pagos...
-Total registros: 541
-Total columnas: 52
-
-Buscando c¾digo de autorizaci¾n: 971736
-ERROR: 'charmap' codec can't encode character '\u2705' in position 2: character maps to <undefined>
