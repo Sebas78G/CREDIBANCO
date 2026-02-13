@@ -12,55 +12,80 @@ import sys
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-# ======================================================
-# CONFIGURACIÓN
-# ======================================================
-CARPETA_EXCEL_ENTRADA = "entrada"
+
+CARPETA_EXCEL_ENTRADA = "excel"
 CARPETA_VOUCHERS_OK = "vouchers_ok"
 
-# ======================================================
-# CREAR CARPETAS
-# ======================================================
+
 for c in [CARPETA_EXCEL_ENTRADA, CARPETA_VOUCHERS_OK]:
     os.makedirs(c, exist_ok=True)
 
-# ======================================================
-# AUTO-DETECCIÓN DE ARCHIVOS EXCEL
-# ======================================================
 def detectar_exceles():
-    """
-    Auto-detecta cuál Excel es el validador y cuál es el de datos
-    basándose en el número de columnas
-    """
-    archivos_excel = glob.glob(os.path.join(CARPETA_EXCEL_ENTRADA, "*.xlsx"))
+    # Buscar archivos Excel (.xlsx) y OpenDocument (.ods)
+    archivos_excel = []
+    archivos_excel.extend(glob.glob(os.path.join(CARPETA_EXCEL_ENTRADA, "*.xlsx")))
+    archivos_excel.extend(glob.glob(os.path.join(CARPETA_EXCEL_ENTRADA, "*.ods")))
     
     if len(archivos_excel) < 2:
         raise Exception(f"❌ ERROR: Se necesitan al menos 2 archivos Excel en '{CARPETA_EXCEL_ENTRADA}/'")
     
     info_exceles = []
     for archivo in archivos_excel:
-        df = pd.read_excel(archivo, nrows=0)
-        num_cols = len(df.columns)
-        info_exceles.append({
-            'ruta': archivo,
-            'nombre': os.path.basename(archivo),
-            'columnas': num_cols
-        })
+        try:
+            # Detectar el motor apropiado según la extensión
+            motor = None
+            if archivo.endswith('.ods'):
+                motor = 'odf'  # Requiere instalar: pip install odfpy
+            
+            # Leer solo la primera fila para detectar columnas
+            df = pd.read_excel(archivo, nrows=0, engine=motor)
+            num_cols = len(df.columns)
+            nombre = os.path.basename(archivo)
+            
+           
+            tipo_detectado = "Desconocido"
+            if num_cols <= 10: 
+                tipo_detectado = "VOUCHER (pocas columnas)"
+            elif num_cols >= 15:  
+                tipo_detectado = "Transacciones completas (muchas columnas)"
+            
+            info_exceles.append({
+                'ruta': archivo,
+                'nombre': nombre,
+                'columnas': num_cols,
+                'tipo': tipo_detectado
+            })
+            
+        except Exception as e:
+            print(f"⚠️  No se pudo leer {os.path.basename(archivo)}: {e}")
+            continue
     
-    # Ordenar por número de columnas (menor a mayor)
+    if len(info_exceles) < 2:
+        raise Exception(f"❌ ERROR: No se pudieron leer suficientes archivos Excel válidos en '{CARPETA_EXCEL_ENTRADA}/'")
+    
     info_exceles.sort(key=lambda x: x['columnas'])
-    
+
     validador = info_exceles[0]
+    
     datos = info_exceles[-1]
     
-    print(f"✅ Validador detectado: {validador['nombre']} ({validador['columnas']} columnas)")
-    print(f"✅ Datos detectado:     {datos['nombre']} ({datos['columnas']} columnas)")
+    print(f"✅ VOUCHER detectado:      {validador['nombre']}")
+    print(f"   └─ Tipo: {validador['tipo']}")
+    print(f"   └─ Columnas: {validador['columnas']}")
+    print(f"")
+    print(f"✅ Transacciones detectado: {datos['nombre']}")
+    print(f"   └─ Tipo: {datos['tipo']}")
+    print(f"   └─ Columnas: {datos['columnas']}")
+    
+    if abs(validador['columnas'] - datos['columnas']) < 5:
+        print(f"")
+        print(f"⚠️  ADVERTENCIA: Los archivos tienen números de columnas similares")
+        print(f"   Validador: {validador['columnas']} | Datos: {datos['columnas']}")
+        print(f"   Verifica que los archivos sean correctos.")
     
     return validador['ruta'], datos['ruta']
 
-# ======================================================
-# NORMALIZACIÓN
-# ======================================================
+
 def normalizar_codigo(codigo):
     if pd.isna(codigo): return ''
     if isinstance(codigo, float): codigo = int(codigo)
@@ -69,7 +94,6 @@ def normalizar_codigo(codigo):
     return codigo
 
 def limpiar_numero(valor):
-    """Limpia .0 de números flotantes para mostrarlos como enteros"""
     if pd.isna(valor): return ''
     valor_str = str(valor)
     if valor_str.endswith('.0'):
@@ -90,16 +114,14 @@ def formatear_moneda(valor):
 
 def formatear_tarjeta(t):
     if pd.isna(t): return "**** **** **** ****"
-    t_str = str(t).replace(' ', '')  # Eliminar espacios pero mantener asteriscos
+    t_str = str(t).replace(' ', '')  
     
-    # Extraer solo los dígitos del final (después de los asteriscos)
-    # Buscar los últimos dígitos contiguos
     digitos = ''
     for char in reversed(t_str):
         if char.isdigit():
             digitos = char + digitos
         else:
-            break  # Detenerse al encontrar un asterisco u otro carácter
+            break  
     
     if len(digitos) >= 4:
         return f"**** **** **** {digitos[-4:]}"
@@ -112,25 +134,12 @@ def obtener_franquicia(t):
     if t.startswith('3'): return "AMERICAN EXPRESS"
     return "VISA"
 
-# ======================================================
-# DETECCIÓN FLEXIBLE DE COLUMNAS
-# ======================================================
+
 def detectar_columna(df, patrones):
-    """
-    Busca una columna en el DataFrame que coincida con alguno de los patrones dados.
-    
-    Args:
-        df: DataFrame de pandas
-        patrones: lista de strings a buscar (ej: ['TKT', 'TICKET', 'NUMERO_TKT'])
-    
-    Returns:
-        nombre exacto de la columna encontrada o None
-    """
+   
     for columna in df.columns:
-        # Normalizar nombre de columna: quitar espacios, mayúsculas
         col_normalizada = str(columna).strip().upper().replace(' ', '_')
         
-        # Buscar coincidencia con algún patrón
         for patron in patrones:
             patron_norm = patron.strip().upper().replace(' ', '_')
             if patron_norm in col_normalizada or col_normalizada in patron_norm:
@@ -139,15 +148,10 @@ def detectar_columna(df, patrones):
     return None
 
 def mapear_columnas_validador(df):
-    """
-    Detecta y mapea las columnas del Excel validador de forma robusta.
     
-    Returns:
-        dict: {'TKT': 'nombre_real_columna', 'FECHA': ..., etc}
-    """
     mapa = {}
     
-    # Definir patrones para cada columna esperada
+
     patrones_columnas = {
         'TKT': ['TKT', 'TICKET', 'NUMERO', 'NUMBER', 'NUM_TKT'],
         'FECHA': ['FECHA', 'DATE', 'HORA', 'DATETIME', 'TIMESTAMP'],
@@ -157,7 +161,7 @@ def mapear_columnas_validador(df):
         'PNR': ['PNR', 'LOCALIZADOR', 'BOOKING', 'RESERVA']
     }
     
-    # Detectar cada columna
+    
     for clave, patrones in patrones_columnas.items():
         columna_detectada = detectar_columna(df, patrones)
         if columna_detectada:
@@ -168,14 +172,91 @@ def mapear_columnas_validador(df):
     
     return mapa
 
-# ======================================================
-# EXTRACCIÓN DE DATOS DE PARÁMETROS
-# ======================================================
+def consolidar_filas_por_autorizacion(df, mapa_columnas):
+    """
+    Consolida filas del Excel validador que tienen el mismo código de autorización.
+    
+    Problema: El Excel validador puede tener múltiples filas con el mismo código AUT
+    pero con información diferente (ej: una tiene TKT, otra tiene PNR).
+    
+    Solución: Agrupar por código de autorización y combinar la información:
+    - Elegir valores no vacíos de cada columna
+    - Combinar múltiples TKTs separados por coma
+    - Generar UNA sola fila por código de autorización único
+    
+    Returns:
+        DataFrame consolidado con una fila por código de autorización único
+    """
+    if 'AUT' not in mapa_columnas:
+        print("⚠️  No se puede consolidar: columna AUT no detectada")
+        return df
+    
+    col_aut = mapa_columnas['AUT']
+    
+    # Normalizar códigos de autorización para agrupación
+    df_temp = df.copy()
+    df_temp['AUT_NORMALIZADO'] = df_temp[col_aut].apply(normalizar_codigo)
+    
+    # Identificar duplicados
+    duplicados = df_temp[df_temp.duplicated(subset=['AUT_NORMALIZADO'], keep=False)]
+    num_duplicados = len(duplicados)
+    
+    if num_duplicados == 0:
+        print("✓ No se encontraron códigos de autorización duplicados")
+        return df
+    
+    print(f"🔍 Detectados {num_duplicados} registros con códigos de autorización duplicados")
+    
+    # Función auxiliar para consolidar valores de un grupo
+    def consolidar_grupo(grupo):
+        """Combina información de múltiples filas con el mismo código AUT"""
+        resultado = {}
+        
+        for col in grupo.columns:
+            if col == 'AUT_NORMALIZADO':
+                continue
+                
+            valores = grupo[col].dropna()
+            valores = valores[valores.astype(str).str.strip() != '']
+            
+            if len(valores) == 0:
+                resultado[col] = pd.NA
+            elif col == mapa_columnas.get('TKT'):
+                # Para TKT, combinar TODOS los valores únicos
+                tkts_unicos = valores.apply(limpiar_numero).unique()
+                # Filtrar valores vacíos
+                tkts_unicos = [t for t in tkts_unicos if t and str(t).strip()]
+                
+                if len(tkts_unicos) == 0:
+                    resultado[col] = pd.NA
+                elif len(tkts_unicos) == 1:
+                    resultado[col] = tkts_unicos[0]
+                else:
+                    # Guardar todos los TKTs separados por guión bajo para el nombre del archivo
+                    resultado[col] = '_'.join(map(str, tkts_unicos))
+            else:
+                # Para otros campos, tomar el primer valor no vacío
+                resultado[col] = valores.iloc[0]
+        
+        return pd.Series(resultado)
+    
+    # Consolidar grupos
+    df_consolidado = df_temp.groupby('AUT_NORMALIZADO', as_index=False).apply(
+        consolidar_grupo, include_groups=False
+    )
+    
+    # Eliminar la columna temporal
+    if 'AUT_NORMALIZADO' in df_consolidado.columns:
+        df_consolidado = df_consolidado.drop(columns=['AUT_NORMALIZADO'])
+    
+    num_consolidados = len(df) - len(df_consolidado)
+    print(f"✓ Consolidados {num_consolidados} registros duplicados")
+    print(f"📊 Total a procesar: {len(df_consolidado)} vouchers únicos (de {len(df)} filas originales)")
+    
+    return df_consolidado
+
+
 def extraer_info_transaccion(matches, aut_code):
-    """
-    Analiza las filas del Excel de pagos para extraer info
-    de Aerolínea y Agencia separadamente
-    """
     info = {
         'aerolinea': {
             'existe': False,
@@ -192,27 +273,25 @@ def extraer_info_transaccion(matches, aut_code):
             'valor_base': 0.0,
             'impuesto': 0.0,
             'total': 0.0,
-            'aut': aut_code, # Suele ser el mismo o +3
+            'aut': aut_code, 
             'comercio': '011029774'
         },
         'general': {
-            'nuevo_aut': aut_code # Por si cambia
+            'nuevo_aut': aut_code 
         }
     }
     
-    # Iterar sobre las filas encontradas
+    
     for idx, row in matches.iterrows():
         params = str(row.get('Parámetros adicionales de pedido', ''))
         valor_fila = limpiar_valor(row.get('Valor total', 0))
         
-        # Datos generales del primer registro
         if 'titular' not in info['general']:
             info['general']['titular'] = row.get('Titular de la tarjeta', '')
             info['general']['ip'] = row.get('IP', '34.232.176.163')
-            info['general']['fecha'] = str(row.get('Fecha de pago', '')).split('.')[0] # Limpiar
-            info['general']['tarjeta'] = row.get('Número de tarjeta', '') # Del Excel pagos
+            info['general']['fecha'] = str(row.get('Fecha de pago', '')).split('.')[0] 
+            info['general']['tarjeta'] = row.get('Número de tarjeta', '') 
         
-        # Determinar si es AEROLINEA o AGENCIA
         es_aerolinea = 'airlineName' in params
         
         if es_aerolinea:
@@ -220,41 +299,32 @@ def extraer_info_transaccion(matches, aut_code):
             info['aerolinea']['total'] = valor_fila
             
             
-            # Extraer Tax (el campo es airTax.amount, no airportTax)
             tax_match = re.search(r'airTax\.amount:([\d.]+)', params)
             if tax_match:
                 info['aerolinea']['impuesto'] = float(tax_match.group(1))
             
-            # Base = Total - Tax
             info['aerolinea']['valor_base'] = info['aerolinea']['total'] - info['aerolinea']['impuesto']
             
-            # Extraer Nombre Aerolinea
             name_match = re.search(r'airlineName:([^,\]]+)', params)
             if name_match:
                 info['aerolinea']['nombre'] = name_match.group(1)
                 
-            # Extraer ID Aerolinea
             id_match = re.search(r'airlineId:(\d+)', params)
             if id_match:
                 info['aerolinea']['id'] = id_match.group(1)
                 
         else:
-            # Es AGENCIA
             info['agencia']['existe'] = True
             info['agencia']['total'] = valor_fila
-            info['agencia']['valor_base'] = valor_fila # Asumimos IVA 0 por defecto
+            info['agencia']['valor_base'] = valor_fila 
             
-            # A veces la agencia tiene un aut diferente (ej: 971739 vs 971736)
-            # Intentar ver si el excel tiene columna 'Código de aprobación' diferente en esta fila
             aut_fila = str(row.get('Código de aprobación', '')).strip()
             if aut_fila and aut_fila != 'nan':
                  info['agencia']['aut'] = aut_fila
 
     return info
 
-# ======================================================
-# GENERADOR PDF
-# ======================================================
+
 def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     ruta = os.path.join(carpeta, nombre)
     c = canvas.Canvas(ruta, pagesize=letter)
@@ -264,7 +334,6 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     x_right = w - 140
     y = h - 40
     
-    # 1. LOGO - Visible arriba a la izquierda
     logo_path = os.path.join("img", "credibanco.png")
     if os.path.exists(logo_path):
         c.drawImage(logo_path, x_left, y - 20, width=120, height=30, preserveAspectRatio=True, mask='auto')
@@ -273,7 +342,6 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
         c.drawString(x_left, y, "credibanco")
     y -= 60
     
-    # 2. CAJA "Pago exitoso" con marco aparte
     c.setStrokeColor(colors.HexColor("#D1D5DB"))
     c.setLineWidth(1.5)
     c.setFillColor(colors.HexColor("#F3F4F6"))
@@ -288,24 +356,21 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     c.setFillColor(colors.black)
     y -= 80
     
-    # INICIO DEL MARCO PRINCIPAL - Antes de EXPRESO para incluirlo dentro
     marco_inicio_y = y
     
-    y -= 20 # Padding superior para que el texto no quede pegado al borde
+    y -= 20 
     
     c.setFont("Helvetica-Bold", 9)
     c.setFillColor(colors.HexColor("#6B7280"))
     c.drawString(x_left + 10, y, "EXPRESO VIAJES Y TURISMO")
     y -= 12
     
-    # Línea separadora completa
     c.setStrokeColor(colors.HexColor("#E5E7EB"))
     c.setLineWidth(1)
     c.line(x_left + 10, y, x_right - 10, y)
     c.setStrokeColor(colors.black)
     y -= 20
     
-    # 4. INFORMACIÓN DEL PAGO
     c.setFont("Helvetica-Bold", 13)
     c.drawString(x_left + 10, y, "Información del pago")
     y -= 20
@@ -329,7 +394,6 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     fila("Número de orden", limpiar_numero(datos_validador.get('TKT', '')))
     fila("Número de terminal", "00006760")
     
-    # Usar número de tarjeta del Excel de pagos (tiene asteriscos), fallback al validador
     num_tarjeta = info_pago.get('general', {}).get('tarjeta', datos_validador.get('TARJETA', ''))
     fila("Franquicia", obtener_franquicia(num_tarjeta))
     fila("Número de tarjeta", formatear_tarjeta(num_tarjeta))
@@ -338,10 +402,8 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     fila("Titular de la Tarjeta", titular)
     y -= 8
     
-    # SECCIÓN AEROLINEA
     data_air = info_pago.get('aerolinea', {})
     if data_air.get('existe'):
-        # Línea separadora
         c.setStrokeColor(colors.HexColor("#E5E7EB"))
         c.setLineWidth(1)
         c.line(x_left + 10, y, x_right - 10, y)
@@ -368,10 +430,8 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
         c.drawRightString(x_right - 10, y, formatear_moneda(data_air['total']))
         y -= 20
 
-    # SECCIÓN AGENCIA
     data_agency = info_pago.get('agencia', {})
     if data_agency.get('existe'):
-        # Línea separadora
         c.setStrokeColor(colors.HexColor("#E5E7EB"))
         c.setLineWidth(1)
         c.line(x_left + 10, y, x_right - 10, y)
@@ -395,12 +455,9 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
         c.drawRightString(x_right - 10, y, formatear_moneda(data_agency['total']))
         y -= 20
         
-    # TOTAL GENERAL
     total_gral = data_air.get('total', 0) + data_agency.get('total', 0)
     if total_gral == 0:
         total_gral = limpiar_valor(datos_validador.get('VALOR', 0))
-
-    # Línea separadora final
     c.setStrokeColor(colors.HexColor("#E5E7EB"))
     c.setLineWidth(1)
     c.line(x_left + 10, y, x_right - 10, y)
@@ -412,7 +469,6 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     c.drawRightString(x_right - 10, y, formatear_moneda(total_gral))
     y -= 25
     
-    # MARCO GENERAL con bordes redondeados
     marco_fin_y = y
     marco_altura = marco_inicio_y - marco_fin_y
     c.setStrokeColor(colors.HexColor("#D1D5DB"))
@@ -421,14 +477,12 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     c.setStrokeColor(colors.black)
     y -= 15
     
-    # FOOTER
     c.setFont("Helvetica", 7)
     c.setFillColor(colors.HexColor("#9CA3AF"))
     texto = ("Comprobante de pago venta no presencial ( * ) sujeto a verificación de la DIAN "
              "pagaré incondicionalmente y a la orden del acreedor, el valor total de este pagaré "
              "junto con los intereses a las tasas máximas permitidas por la ley.")
     
-    # Texto multilínea simple
     lines = [texto[i:i+95] for i in range(0, len(texto), 95)]
     for line in lines:
         c.drawString(x_left, y, line)
@@ -438,9 +492,7 @@ def generar_voucher_pdf(datos_validador, info_pago, nombre, carpeta):
     print(f"  📄 Generado: {nombre}")
 
 
-# ======================================================
-# EJECUCIÓN
-# ======================================================
+
 def procesar_vouchers():
     print("="*60)
     print("GENERADOR VOUCHERS - MODO EXTRACTOR EXACTO")
@@ -453,22 +505,27 @@ def procesar_vouchers():
         return
 
     print("📖 Leyendo archivos...")
-    df_val = pd.read_excel(r_val)
-    df_pagos = pd.read_excel(r_dat)
+    # Detectar si el validador es .ods
+    motor_val = 'odf' if r_val.endswith('.ods') else None
+    motor_dat = 'odf' if r_dat.endswith('.ods') else None
     
-    # MAPEO ROBUSTO DE COLUMNAS DEL VALIDADOR
+    df_val = pd.read_excel(r_val, engine=motor_val)
+    df_pagos = pd.read_excel(r_dat, engine=motor_dat)
+    
     print("\n🔍 Detectando columnas del validador...")
     mapa_val = mapear_columnas_validador(df_val)
     
-    # Verificar que se detectaron las columnas críticas
     if 'AUT' not in mapa_val:
         print("❌ ERROR: No se pudo detectar la columna de autorización en el validador")
         return
     if 'TKT' not in mapa_val:
         print("❌ ERROR: No se pudo detectar la columna de TKT en el validador")
         return
+    
+    # CONSOLIDAR FILAS DUPLICADAS POR CÓDIGO DE AUTORIZACIÓN
+    print("\n🔄 Consolidando vouchers duplicados...")
+    df_val = consolidar_filas_por_autorizacion(df_val, mapa_val)
         
-    # Detectar columna AUT en pagos
     col_aut_pagos = next((c for c in df_pagos.columns if 'APROBACI' in str(c).upper()), None)
     if not col_aut_pagos:
         print("❌ No se encontró columna Aprobación en pagos")
@@ -476,20 +533,17 @@ def procesar_vouchers():
 
     print(f"\n🔍 Columnas clave: Validador AUT='{mapa_val['AUT']}' | Pagos='{col_aut_pagos}'")
     
-    # Normalizar para búsquedas
     df_val['MATCH_KEY'] = df_val[mapa_val['AUT']].apply(normalizar_codigo)
     df_pagos['MATCH_KEY'] = df_pagos[col_aut_pagos].apply(normalizar_codigo)
     
-    # Indexar pagos para búsqueda rápida (puede haber duplicados, así que no unique)
     print("⚙️  Procesando...")
     
     conteos = {'ok': 0, 'error': 0}
-    errores_detallados = []  # Lista para rastrear errores
+    errores_detallados = []  
     
     for _, row_val in df_val.iterrows():
         key = row_val['MATCH_KEY']
         
-        # Datos básicos del validador para el PDF (usar mapeo dinámico)
         datos_basic = {
             'TKT': row_val.get(mapa_val.get('TKT'), '') if 'TKT' in mapa_val else '',
             'FECHA': row_val.get(mapa_val.get('FECHA'), '') if 'FECHA' in mapa_val else '',
@@ -501,11 +555,9 @@ def procesar_vouchers():
         
         nombre_archivo = f"TKT_{limpiar_numero(datos_basic['TKT'])}_AUT_{key}.pdf".replace(' ', '_')
         
-        # Buscar en pagos (primer match para obtener base de pedido)
         match_inicial = df_pagos[df_pagos['MATCH_KEY'] == key]
         
         if match_inicial.empty:
-            # Error - no encontrado, solo registrar en el reporte Excel
             observacion = f"No se encontró el código de autorización '{key}' en el Excel de pagos"
             errores_detallados.append({
                 'Número de Autorización': key,
@@ -516,10 +568,8 @@ def procesar_vouchers():
             })
             conteos['error'] += 1
         else:
-            # Obtener número de pedido del primer match
             num_pedido = match_inicial.iloc[0]['Número de pedido']
             
-            # Extraer base del número de pedido (parte antes del _)
             if pd.notna(num_pedido):
                 num_pedido_str = str(num_pedido)
                 if '_' in num_pedido_str:
@@ -527,22 +577,17 @@ def procesar_vouchers():
                 else:
                     base_pedido = num_pedido_str
                 
-                # Buscar TODOS los registros con la misma base de pedido
                 matches = df_pagos[df_pagos['Número de pedido'].astype(str).str.startswith(base_pedido + '_')]
                 
-                # Si no hay matches con _, intentar match exacto
                 if matches.empty:
                     matches = df_pagos[df_pagos['Número de pedido'].astype(str) == base_pedido]
             else:
-                # Si no hay número de pedido, usar solo el match inicial
                 matches = match_inicial
             
-            # OK - Extraer info detallada de TODOS los registros relacionados
             info_completa = extraer_info_transaccion(matches, key)
             generar_voucher_pdf(datos_basic, info_completa, nombre_archivo, CARPETA_VOUCHERS_OK)
             conteos['ok'] += 1
     
-    # Generar reporte de errores en Excel
     if errores_detallados:
         print("\n📊 Generando reporte de errores...")
         df_errores = pd.DataFrame(errores_detallados)
